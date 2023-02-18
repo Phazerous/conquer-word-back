@@ -13,21 +13,6 @@ export class UsersService {
     private tokensRepository: Repository<UserToken>,
   ) {}
 
-  private readonly users = [
-    {
-      id: 1,
-      name: 'First User',
-    },
-    {
-      id: 2,
-      name: 'Second User',
-    },
-  ];
-
-  async getUserById(userId: number) {
-    return this.users.find((user) => user.id === userId);
-  }
-
   // CHECK IF EMAIL DOESN'T EXIST
   async createUser(userDto: UserDto) {
     const { email, password } = userDto;

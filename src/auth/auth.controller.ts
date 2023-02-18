@@ -1,13 +1,20 @@
-import { Controller, Get, Request, UseGuards, Res, Post } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+import {
+  Controller,
+  Request,
+  UseGuards,
+  Res,
+  Post,
+  Body,
+} from '@nestjs/common';
 import { Response } from 'express';
-import { CookieAuthGuard } from './strategies/cookie-auth.guard';
-import { CookieStrategy } from './strategies/cookie.strategy';
+import UserDto from 'src/users/dto/UserDto';
+import { AuthService } from './auth.service';
 import { LocalAuthGuard } from './strategies/local-auth.guars';
-import { LocalStrategy } from './strategies/local.strategy';
 
 @Controller('auth')
 export class AuthController {
+  constructor(private authService: AuthService) {}
+
   @UseGuards(LocalAuthGuard)
   @Post('/login')
   async login(@Request() req, @Res({ passthrough: true }) response: Response) {
@@ -15,9 +22,14 @@ export class AuthController {
     response.cookie('token', token);
   }
 
-  @UseGuards(CookieAuthGuard)
-  @Get('/user')
-  async getUser(@Request() req) {
-    return req.user;
+  @Post('/register')
+  async register(
+    @Body() userDto: UserDto,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const token = await this.authService.register(userDto);
+
+    response.cookie('token', token);
+    return token;
   }
 }

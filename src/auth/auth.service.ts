@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { nanoid } from 'nanoid';
 import User from 'src/typeorm/User';
+import UserDto from 'src/users/dto/UserDto';
 import { UsersService } from 'src/users/users.service';
 
 @Injectable()
@@ -30,6 +31,13 @@ export class AuthService {
     }
 
     return null;
+  }
+
+  async register(userDto: UserDto) {
+    const user = await this.usersService.createUser(userDto);
+    const token = await this.assignToken(user);
+
+    return token;
   }
 
   async assignToken(user: User): Promise<string> {
