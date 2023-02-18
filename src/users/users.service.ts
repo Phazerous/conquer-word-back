@@ -52,10 +52,6 @@ export class UsersService {
       .where('token.token = :token', { token })
       .getOne();
 
-    console.log(token);
-    console.log('---');
-    console.log(tokenEntity);
-
     return tokenEntity.user;
   }
 

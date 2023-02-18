@@ -13,7 +13,7 @@ export class AuthService {
     if (user && user.password === pass) {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { password, ...result } = user;
-      console.log(user);
+      console.log('here');
       return await this.assignToken(user);
     }
 
@@ -25,7 +25,7 @@ export class AuthService {
 
     if (user) {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { password, ...result } = user;
+      const { password, tokens, ...result } = user;
       return result;
     }
 

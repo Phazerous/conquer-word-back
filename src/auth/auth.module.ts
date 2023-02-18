@@ -6,7 +6,8 @@ import { UsersModule } from 'src/users/users.module';
 import User from 'src/typeorm/User';
 import UserToken from 'src/typeorm/UserToken';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { LocalStrategy } from './local.strategy';
+import { LocalStrategy } from './strategies/local.strategy';
+import { CookieStrategy } from './strategies/cookie.strategy';
 
 @Module({
   imports: [
@@ -14,7 +15,7 @@ import { LocalStrategy } from './local.strategy';
     PassportModule,
     TypeOrmModule.forFeature([User, UserToken]),
   ],
-  providers: [AuthService, LocalStrategy],
+  providers: [AuthService, LocalStrategy, CookieStrategy],
   controllers: [AuthController],
   exports: [AuthService],
 })
