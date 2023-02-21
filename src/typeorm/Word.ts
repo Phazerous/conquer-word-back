@@ -2,10 +2,13 @@ import {
   Column,
   CreateDateColumn,
   Entity,
+  ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
 } from 'typeorm';
+import Definition from './Definition';
 import { TagsToWord } from './TagsToWord';
+import User from './User';
 
 @Entity()
 export default class Word {
@@ -38,8 +41,11 @@ export default class Word {
   @CreateDateColumn()
   create_at: Date;
 
-  // @ManyToOne(() => User, (user) => user.words)
-  // user: User;
+  @ManyToOne(() => User, (user) => user.words)
+  user: User;
+
+  @OneToMany(() => Definition, (definition) => definition.word)
+  definitions: Definition[];
 
   @OneToMany(() => TagsToWord, (tagsToWord) => tagsToWord.word)
   tagsToWord: TagsToWord[];

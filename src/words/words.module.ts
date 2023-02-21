@@ -5,9 +5,21 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import Word from 'src/typeorm/Word';
 import WordTag from 'src/typeorm/WordTag';
 import { TagsToWord } from 'src/typeorm/TagsToWord';
+import DefinitionTag from 'src/typeorm/DefinitionTag';
+import Example from 'src/typeorm/Example';
+import Definition from 'src/typeorm/Definition';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Word, WordTag, TagsToWord])],
+  imports: [
+    TypeOrmModule.forFeature([
+      Word,
+      WordTag,
+      TagsToWord,
+      DefinitionTag,
+      Example,
+      Definition,
+    ]),
+  ],
   providers: [WordsService],
   controllers: [WordsController],
 })

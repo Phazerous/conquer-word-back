@@ -2,7 +2,9 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthModule } from './auth/auth.module';
+import Definition from './typeorm/Definition';
 import DefinitionTag from './typeorm/DefinitionTag';
+import Example from './typeorm/Example';
 import { TagsToWord } from './typeorm/TagsToWord';
 import User from './typeorm/User';
 import UserToken from './typeorm/UserToken';
@@ -23,7 +25,16 @@ import { WordsModule } from './words/words.module';
       username: process.env.DATABASE_USER,
       password: process.env.DATABASE_PASSWORD,
       database: process.env.DATABASE_NAME,
-      entities: [User, UserToken, Word, WordTag, TagsToWord, DefinitionTag],
+      entities: [
+        User,
+        UserToken,
+        Word,
+        WordTag,
+        TagsToWord,
+        DefinitionTag,
+        Example,
+        Definition,
+      ],
       synchronize: true,
     }),
     WordsModule,

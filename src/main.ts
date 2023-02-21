@@ -8,6 +8,11 @@ async function bootstrap() {
 
   app.use(cookieParser());
 
+  app.enableCors({
+    origin: true,
+    credentials: true,
+  });
+
   await app.listen(3000);
 }
 bootstrap();

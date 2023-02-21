@@ -18,11 +18,11 @@ export default class User {
   @OneToMany(() => UserToken, (token) => token.user)
   tokens: UserToken[];
 
-  // @OneToMany(() => Word, (word) => word.user)
-  // words: Word[];
+  @OneToMany(() => Word, (word) => word.user)
+  words: Word[];
 
-  // @OneToMany(() => WordTag, (wordTag) => wordTag.user)
-  // wordTags: [];
+  @OneToMany(() => WordTag, (wordTag) => wordTag.user)
+  wordTags: [];
 
   // @OneToMany(() => DefinitionTag, (defTag) => defTag.user)
   // defTags: [];

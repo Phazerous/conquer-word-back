@@ -19,13 +19,13 @@ export default class WordTag {
   @Column()
   title: string;
 
-  // @Column({
-  //   nullable: true,
-  // })
-  // description: string;
+  @Column({
+    nullable: true,
+  })
+  description: string;
 
-  // @ManyToOne(() => User, (user) => user.wordTags)
-  // user: User;
+  @ManyToOne(() => User, (user) => user.wordTags)
+  user: User;
 
   @OneToMany(() => TagsToWord, (tagsToWord) => tagsToWord.tag)
   tagsToWord: TagsToWord[];
