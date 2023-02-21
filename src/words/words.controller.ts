@@ -17,9 +17,10 @@ import { WordsService } from './words.service';
 export class WordsController {
   constructor(private wordsService: WordsService) {}
 
+  @UseGuards(CookieAuthGuard)
   @Post('/create')
-  async createWord(@Body() wordDto: WordDto) {
-    return this.wordsService.createWord(wordDto);
+  async createWord(@Body() wordDto: WordDto, @Request() req) {
+    return this.wordsService.createWord(req.user, wordDto);
   }
 
   @Post('/update')
@@ -44,7 +45,7 @@ export class WordsController {
 
   @Get(':wordID')
   async getWordById(@Param('wordID', ParseIntPipe) wordID: number) {
-    const word = this.wordsService.getWordById(wordID);
+    const word = this.wordsService.getWordByID(wordID);
     return word;
   }
 }

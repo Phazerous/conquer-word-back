@@ -35,228 +35,132 @@ export class WordsService {
     private tagsToWordRepository: Repository<TagsToWord>,
   ) {}
 
-  async createWord(wordDto: WordDto) {
-    const { tags, definitions, ...rest } = wordDto;
+  async createWord(user: User, wordDto: WordDto) {
+    const wordEntity = new Word();
+    wordEntity.title = wordDto.title;
+    wordEntity.user = user;
 
-    const word = await this.wordsRepository.save(rest);
-    await this.handleDefinitions(word, definitions);
-    // await this.assignWordTags(word, tags);
+    const word = await this.wordsRepository.save(wordEntity);
+    wordDto.id = word.id;
 
-    return await this.getWordById(word.id);
-  }
-
-  async assignWordTags(word: Word, tags: WordTag[]) {
-    const tagsToWord = tags.map((tag) =>
-      this.tagsToWordRepository.create({ tag, word }),
-    );
-
-    await this.tagsToWordRepository.save(tagsToWord);
-  }
-
-  async handleDefinitions(word: Word, definitionsDto: DefinitionDto[]) {
-    const definitionsEntities: Definition[] = definitionsDto
-      ? definitionsDto.map((definitionDto: DefinitionDto) => {
-          const { tags, examples, ...def } = definitionDto;
-
-          const definitionEntity = this.definitionsRepository.create({
-            ...def,
-            word,
-          });
-
-          return definitionEntity;
-        })
-      : [];
-
-    if (definitionsEntities.length !== 0) {
-      const definitions = await this.definitionsRepository.save(
-        definitionsEntities,
-      );
-
-      const examplesEntities: Example[] = [];
-
-      definitions.map((definition) => {
-        const def = definitionsDto.find((def) => def.text === definition.text);
-
-        if (def && def.examples) {
-          const examples = this.prepareDefinitionExamples(
-            definition,
-            def.examples,
-          );
-          if (examples.length !== 0) examplesEntities.push(...examples);
-        }
-      });
-
-      if (examplesEntities.length !== 0) {
-        await this.examplesRepository.save(examplesEntities);
-      }
-    }
-  }
-
-  prepareDefinitionExamples(
-    definition: Definition,
-    examplesDto: ExampleDto[],
-  ): Example[] {
-    const examples: Example[] = examplesDto
-      ? examplesDto.map((example: ExampleDto) => {
-          const { content } = example;
-
-          const exampleEntity = this.examplesRepository.create({
-            content,
-            definition,
-          });
-
-          return exampleEntity;
-        })
-      : [];
-
-    return examples;
+    return await this.updateWord(wordDto);
   }
 
   async updateWord(wordDto: WordDto) {
-    const { tags, definitions, id, ...wordEntity } = wordDto;
-    const prevWord = await this.getWordById(id);
+    const { tags, definitions } = wordDto;
 
-    console.log(wordEntity);
+    const prevWord = await this.getWordByID(wordDto.id);
+    await this.updateWordContent(prevWord, wordDto);
 
-    const word = await this.wordsRepository.save(wordEntity);
-    await this.updateDefinitions(word, definitions, prevWord.definitions);
+    const prevDefinitions = prevWord.definitions;
+    await this.updateDefinitions(prevWord, prevDefinitions, definitions);
+    const updatedDefinitions = (await this.getWordByID(wordDto.id)).definitions;
 
-    return await this.getWordById(id);
+    if (updatedDefinitions.length !== 0)
+      await this.updateExamples(definitions, updatedDefinitions);
+
+    return this.getWordByID(wordDto.id);
   }
 
-  async updateDefinitions(
+  private async updateWordContent(word: Word, wordDto: WordDto) {
+    word.title = wordDto.title;
+    word.lang = wordDto.lang;
+    word.pronunciation = wordDto.pronunciation;
+    word.description = wordDto.description;
+    word.etymology = wordDto.etymology;
+
+    return await this.wordsRepository.save(word);
+  }
+
+  private async updateDefinitions(
     word: Word,
-    definitionsDto: DefinitionDto[],
     prevDefinitions: Definition[],
+    definitionsDto: DefinitionDto[],
   ) {
-    const handleWord = this.prepareDefinitions(
-      word,
-      definitionsDto,
-      prevDefinitions,
+    const definitionEntities = definitionsDto
+      ? definitionsDto.map((definitionDto: DefinitionDto) =>
+          'id' in definitionDto
+            ? (definitionDto as unknown as Definition)
+            : this.createNewDefinition(word, definitionDto),
+        )
+      : [];
+
+    await this.definitionsRepository.save(definitionEntities);
+
+    const existingDefinitionIDs = definitionEntities
+      .map((def) => def?.id)
+      .filter((def) => def !== undefined);
+
+    const deletedDefinitions = prevDefinitions.filter(
+      (prevDef) => !existingDefinitionIDs.includes(prevDef.id),
+    );
+    const deletedExamples = deletedDefinitions.flatMap(
+      (prevDef) => prevDef.examples,
     );
 
+    await this.examplesRepository.remove(deletedExamples);
+    await this.definitionsRepository.remove(deletedDefinitions);
+  }
+
+  private createNewDefinition(
+    word: Word,
+    definitionDto: DefinitionDto,
+  ): Definition {
+    const definition = new Definition();
+    definition.text = definitionDto.text;
+    definition.description = definitionDto.description;
+    definition.part_of_speech = definitionDto.part_of_speech;
+    definition.word = word;
+    return definition;
+  }
+
+  private async updateExamples(
+    definitionsDtos: DefinitionDto[],
+    prevDefinitions: Definition[],
+  ) {
     const examplesToDelete: Example[] = [];
     const examplesToSave: Example[] = [];
 
-    const updatedDefinitions = await this.definitionsRepository.save(
-      handleWord.definitionsToSave,
-    );
+    definitionsDtos.forEach((definition) => {
+      const prevExamples = prevDefinitions.find(
+        (def) => def.text === definition.text,
+      ).examples;
 
-    examplesToDelete.push(
-      ...this.prepareExamplesToDelete(handleWord.definitionsToDelete),
-    );
+      const exampleEntities: Example[] = definition?.examples
+        ? definition.examples.map((exampleDto: ExampleDto) =>
+            exampleDto?.id
+              ? (exampleDto as unknown as Example)
+              : this.createNewExample(
+                  definition as unknown as Definition,
+                  exampleDto,
+                ),
+          )
+        : [];
 
-    await this.definitionsRepository.remove(handleWord.definitionsToDelete);
+      const existingExamplesIDs = exampleEntities
+        .map((ex) => ex?.id)
+        .filter((ex) => ex !== undefined);
 
-    console.log(updatedDefinitions);
+      const deletedExamples = prevExamples.filter(
+        (ex) => !existingExamplesIDs.includes(ex.id),
+      );
 
-    updatedDefinitions.forEach((definition: Definition) => {
-      const prevDef = prevDefinitions.find((def) => def.id === definition.id);
-      const prevExamples = prevDef?.examples ?? [];
-
-      const toHandle = this.prepareExamples(definition, prevExamples);
-      examplesToSave.push(...toHandle.examplesToSave);
-      examplesToDelete.push(...toHandle.examplesToDelete);
+      examplesToDelete.push(...deletedExamples);
+      examplesToSave.push(...exampleEntities);
     });
 
     await this.examplesRepository.save(examplesToSave);
     await this.examplesRepository.remove(examplesToDelete);
   }
 
-  prepareExamplesToDelete(definitions: Definition[]): Example[] {
-    if (definitions.length === 0) return [];
-
-    const examplesToDelete: Example[] = [];
-
-    definitions.forEach((def) => {
-      if (def.examples.length !== 0) examplesToDelete.push(...def.examples);
-    });
-
-    return examplesToDelete;
-  }
-
-  prepareDefinitions(
-    word: Word,
-    definitions: DefinitionDto[],
-    prevDefinitions: Definition[],
-  ): DefinitionsToHandle {
-    if (definitions.length === 0)
-      return { definitionsToSave: [], definitionsToDelete: prevDefinitions };
-
-    const definitionsToSave: Definition[] = definitions.map(
-      (definitionDto: DefinitionDto) =>
-        'id' in definitionDto
-          ? (definitionDto as unknown as Definition)
-          : this.prepareNewDefinition(word, definitionDto),
-    );
-
-    const existingDefinitionsIDs = definitionsToSave
-      .map((definition: Definition) =>
-        'id' in definition ? definition.id : -1,
-      )
-      .filter((e) => e != -1);
-
-    const definitionsToDelete: Definition[] = prevDefinitions.filter(
-      (def) => !existingDefinitionsIDs.includes(def.id),
-    );
-
-    return {
-      definitionsToSave,
-      definitionsToDelete,
-    };
-  }
-
-  prepareExamples(
-    definition: Definition,
-    prevExamples: Example[],
-  ): ExamplesToHandle {
-    if (definition.examples.length === 0)
-      return { examplesToSave: [], examplesToDelete: prevExamples };
-
-    const examplesToSave: Example[] = definition.examples.map(
-      (exampleDto: ExampleDto) =>
-        'id' in exampleDto
-          ? (exampleDto as unknown as Example)
-          : this.prepareNewExample(definition, exampleDto),
-    );
-
-    const existingExamplesIDs: number[] = examplesToSave
-      .map((example: Example) => ('id' in example ? example.id : -1))
-      .filter((e) => e != -1);
-
-    const examplesToDelete: Example[] = prevExamples.filter(
-      (ex) => !existingExamplesIDs.includes(ex.id),
-    );
-
-    return {
-      examplesToSave,
-      examplesToDelete,
-    };
-  }
-
-  private prepareNewExample(
-    definition: Definition,
-    exampleDto: ExampleDto,
-  ): Example {
-    const example = this.examplesRepository.create({
-      ...exampleDto,
-      definition,
-    });
+  private createNewExample(definition: Definition, exampleDto: ExampleDto) {
+    const example = new Example();
+    example.content = exampleDto.content;
+    example.definition = definition;
     return example;
   }
 
-  private prepareNewDefinition(
-    word: Word,
-    definitionDto: DefinitionDto,
-  ): Definition {
-    const definition = this.definitionsRepository.create({
-      ...definitionDto,
-      word,
-    });
-    return definition;
-  }
-
-  async getWordById(wordID: number) {
+  async getWordByID(wordID: number) {
     const word = await this.wordsRepository
       .createQueryBuilder('word')
       .leftJoinAndSelect('word.definitions', 'definitions')

@@ -8,7 +8,7 @@ export default class WordDto {
   description: string;
   etymology: string;
   pronunciation: string;
-  definitions: DefinitionDto[];
   create_at: Date;
+  definitions: DefinitionDto[];
   tags: WordTagDto[];
 }

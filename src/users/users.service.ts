@@ -37,7 +37,7 @@ export class UsersService {
       .where('token.token = :token', { token })
       .getOne();
 
-    return tokenEntity.user;
+    return tokenEntity?.user;
   }
 
   async assignToken(user: User, token: string): Promise<string> {
