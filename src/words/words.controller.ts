@@ -13,18 +13,18 @@ import CreationWordTag from './dto/CreationWordTag';
 import WordDto from './dto/WordDto';
 import { WordsService } from './words.service';
 
-@Controller()
+@Controller('/deb')
 export class WordsController {
   constructor(private wordsService: WordsService) {}
-
-  @Get('/test')
-  async getWord() {
-    await this.wordsService.selectWordByID(1);
-  }
 
   @Post('/create')
   async createWord(@Body() wordDto: WordDto) {
     return this.wordsService.createWord(wordDto);
+  }
+
+  @Post('/update')
+  async getWord(@Body() wordDto: WordDto) {
+    return await this.wordsService.updateWord(wordDto);
   }
 
   @UseGuards(CookieAuthGuard)
