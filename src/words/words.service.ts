@@ -6,22 +6,12 @@ import WordDto from './dto/WordDto';
 import { getMetadataArgsStorage, Repository } from 'typeorm';
 import WordTag from 'src/typeorm/WordTag';
 import { TagsToWord } from 'src/typeorm/TagsToWord';
-import CreationWordTag from './dto/CreationWordTag';
 import DefinitionDto from './dto/DefinitionDto';
 import Definition from 'src/typeorm/Definition';
 import ExampleDto from './dto/ExampleDto';
 import Example from 'src/typeorm/Example';
-import DefinitionTagDto from './dto/DefinitionTagDto';
-
-interface ExamplesToHandle {
-  examplesToSave: Example[];
-  examplesToDelete: Example[];
-}
-
-interface DefinitionsToHandle {
-  definitionsToSave: Definition[];
-  definitionsToDelete: Definition[];
-}
+import WordTagCreateDto from './dto/WordTagCreateDto';
+import WordTagDto from './dto/WordTagDto';
 
 @Injectable()
 export class WordsService {
@@ -43,7 +33,7 @@ export class WordsService {
     const word = await this.wordsRepository.save(wordEntity);
     wordDto.id = word.id;
 
-    return await this.updateWord(wordDto);
+    return this.updateWord(wordDto);
   }
 
   async updateWord(wordDto: WordDto) {
@@ -160,6 +150,65 @@ export class WordsService {
     return example;
   }
 
+  // TAGS
+
+  async getAllWordTagsByUserID(userID: number) {
+    const wordTags = await this.wordsTagsRepository
+      .createQueryBuilder('tag')
+      .where('tag.user = :userID', { userID })
+      .getMany();
+
+    return wordTags;
+  }
+
+  async createWordTag(user: User, wordTagCreateDto: WordTagCreateDto) {
+    const wordTag = this.wordsTagsRepository.create({
+      ...wordTagCreateDto,
+      user,
+    });
+
+    return await this.saveWordTagAndExtract(wordTag);
+  }
+
+  async updateWordTag(wordTagDto: WordTagDto) {
+    return await this.saveWordTagAndExtract(wordTagDto);
+  }
+
+  async deleteWordTagByID(id: number) {
+    const wordTag = await this.wordsTagsRepository.find({
+      where: {
+        id,
+      },
+    });
+
+    if (wordTag) {
+      await this.wordsTagsRepository.delete(id);
+    } else {
+      throw new Error(`WordTag with ID ${id} not fund.`);
+    }
+  }
+
+  // SELECTION
+
+  async saveWordTagAndExtract(wordTag: WordTagDto) {
+    const {
+      user: u,
+      tagsToWord,
+      ...tag
+    } = await this.wordsTagsRepository.save(wordTag);
+
+    return tag;
+  }
+
+  async selectAllWordTags(user: User) {
+    const tags = await this.wordsTagsRepository
+      .createQueryBuilder('tags')
+      .where('tags.user = :userID', { userID: user.id })
+      .getMany();
+
+    return tags;
+  }
+
   async getWordByID(wordID: number) {
     const word = await this.wordsRepository
       .createQueryBuilder('word')
@@ -184,23 +233,5 @@ export class WordsService {
     // };
 
     return word;
-  }
-
-  async createWordTag(user: User, creationWordTag: CreationWordTag) {
-    const wordTag = this.wordsTagsRepository.create(creationWordTag);
-    wordTag.user = user;
-
-    const { user: u, ...tag } = await this.wordsTagsRepository.save(wordTag);
-
-    return tag;
-  }
-
-  async selectAllWordTags(user: User) {
-    const tags = await this.wordsTagsRepository
-      .createQueryBuilder('tags')
-      .where('tags.user = :userID', { userID: user.id })
-      .getMany();
-
-    return tags;
   }
 }

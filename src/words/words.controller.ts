@@ -4,48 +4,79 @@ import {
   Param,
   Post,
   Body,
+  Delete,
+  Patch,
   UseGuards,
   Request,
 } from '@nestjs/common';
 import { ParseIntPipe } from '@nestjs/common/pipes';
 import { CookieAuthGuard } from 'src/auth/strategies/cookie-auth.guard';
-import CreationWordTag from './dto/CreationWordTag';
 import WordDto from './dto/WordDto';
+import WordTagCreateDto from './dto/WordTagCreateDto';
+import WordTagDto from './dto/WordTagDto';
 import { WordsService } from './words.service';
 
-@Controller('/deb')
+@Controller()
 export class WordsController {
   constructor(private wordsService: WordsService) {}
 
   @UseGuards(CookieAuthGuard)
-  @Post('/create')
-  async createWord(@Body() wordDto: WordDto, @Request() req) {
-    return this.wordsService.createWord(req.user, wordDto);
-  }
-
-  @Post('/update')
-  async getWord(@Body() wordDto: WordDto) {
-    return await this.wordsService.updateWord(wordDto);
+  @Get('wordTag')
+  async getAllWordTags(@Request() req) {
+    console.log(req.user);
+    return await this.wordsService.getAllWordTagsByUserID(req.user.id);
   }
 
   @UseGuards(CookieAuthGuard)
-  @Get('/wordTags')
-  async getAllTags(@Request() req) {
-    return this.wordsService.selectAllWordTags(req.user);
-  }
-
-  @UseGuards(CookieAuthGuard)
-  @Post('/wordTags')
+  @Post('wordTag')
   async createWordTag(
-    @Body() creationWordTag: CreationWordTag,
+    @Body() wordTagCreateDto: WordTagCreateDto,
     @Request() req,
   ) {
-    return this.wordsService.createWordTag(req.user, creationWordTag);
+    return await this.wordsService.createWordTag(req.user, wordTagCreateDto);
   }
 
-  @Get(':wordID')
-  async getWordById(@Param('wordID', ParseIntPipe) wordID: number) {
-    const word = this.wordsService.getWordByID(wordID);
-    return word;
+  @UseGuards(CookieAuthGuard)
+  @Patch('wordTag')
+  async updateWordTag(@Body() wordTagDto: WordTagDto) {
+    return await this.wordsService.updateWordTag(wordTagDto);
   }
+
+  @UseGuards(CookieAuthGuard)
+  @Delete('wordTag/:id')
+  async deleteWordTagByID(@Param('id', ParseIntPipe) id: number) {
+    await this.wordsService.deleteWordTagByID(id);
+  }
+
+  // @UseGuards(CookieAuthGuard)
+  // @Post('/create')
+  // async createWord(@Body() wordDto: WordDto, @Request() req) {
+  //   return this.wordsService.createWord(req.user, wordDto);
+  // }
+
+  // @Post('/update')
+  // async getWord(@Body() wordDto: WordDto) {
+  //   return await this.wordsService.updateWord(wordDto);
+  // }
+
+  // @UseGuards(CookieAuthGuard)
+  // @Get('/wordTags')
+  // async getAllTags(@Request() req) {
+  //   return this.wordsService.selectAllWordTags(req.user);
+  // }
+
+  // @UseGuards(CookieAuthGuard)
+  // @Post('/wordTags')
+  // async createWordTag(
+  //   @Body() creationWordTag: CreationWordTag,
+  //   @Request() req,
+  // ) {
+  //   return this.wordsService.createWordTag(req.user, creationWordTag);
+  // }
+
+  // @Get(':wordID')
+  // async getWordById(@Param('wordID', ParseIntPipe) wordID: number) {
+  //   const word = this.wordsService.getWordByID(wordID);
+  //   return word;
+  // }
 }

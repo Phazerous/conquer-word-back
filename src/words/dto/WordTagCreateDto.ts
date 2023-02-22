@@ -1,4 +1,4 @@
-export default class CreationWordTag {
+export default class WordTagCreateDto {
   title: string;
   description?: string;
 }
