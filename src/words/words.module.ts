@@ -8,6 +8,7 @@ import { TagsToWord } from 'src/typeorm/TagsToWord';
 import DefinitionTag from 'src/typeorm/DefinitionTag';
 import Example from 'src/typeorm/Example';
 import Definition from 'src/typeorm/Definition';
+import { TagsToDefinition } from 'src/typeorm/TagsToDefinition';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import Definition from 'src/typeorm/Definition';
       DefinitionTag,
       Example,
       Definition,
+      TagsToDefinition,
     ]),
   ],
   providers: [WordsService],

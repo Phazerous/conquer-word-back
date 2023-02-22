@@ -24,6 +24,6 @@ export default class User {
   @OneToMany(() => WordTag, (wordTag) => wordTag.user)
   wordTags: [];
 
-  // @OneToMany(() => DefinitionTag, (defTag) => defTag.user)
-  // defTags: [];
+  @OneToMany(() => DefinitionTag, (defTag) => defTag.user)
+  defTags: [];
 }

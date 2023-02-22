@@ -12,6 +12,10 @@ import ExampleDto from './dto/ExampleDto';
 import Example from 'src/typeorm/Example';
 import WordTagCreateDto from './dto/WordTagCreateDto';
 import WordTagDto from './dto/WordTagDto';
+import { TagsToDefinition } from 'src/typeorm/TagsToDefinition';
+import DefinitionTag from 'src/typeorm/DefinitionTag';
+import DefinitionTagCreateDto from './dto/DefinitionTagCreateDto';
+import DefinitionTagDto from './dto/DefinitionTagDto';
 
 @Injectable()
 export class WordsService {
@@ -23,7 +27,13 @@ export class WordsService {
     @InjectRepository(Example) private examplesRepository: Repository<Example>,
     @InjectRepository(TagsToWord)
     private tagsToWordRepository: Repository<TagsToWord>,
+    @InjectRepository(DefinitionTag)
+    private definitionTagsRepository: Repository<DefinitionTag>,
+    @InjectRepository(TagsToDefinition)
+    private tagsToDefinitionRepository: Repository<TagsToDefinition>,
   ) {}
+
+  // WORD
 
   async createWord(user: User, wordDto: WordDto) {
     const wordEntity = new Word();
@@ -41,6 +51,7 @@ export class WordsService {
 
     const prevWord = await this.getWordByID(wordDto.id);
     await this.updateWordContent(prevWord, wordDto);
+    await this.handleWordTags(prevWord, tags);
 
     const prevDefinitions = prevWord.definitions;
     await this.updateDefinitions(prevWord, prevDefinitions, definitions);
@@ -150,7 +161,49 @@ export class WordsService {
     return example;
   }
 
-  // TAGS
+  // WORD TAGS
+  async handleWordTags(word: Word, wordTagsDto: WordTagDto[]) {
+    const prevTagsToWord = (await this.getTagsToWord(word)) || [];
+    const prevTagsIDs = prevTagsToWord.map((tagToWord) => tagToWord.tag.id);
+
+    const existingTagsIDs = wordTagsDto.map((tag) => tag.id);
+    const tagsToDeleteIDs = prevTagsToWord
+      .filter((prevTag) => !existingTagsIDs.includes(prevTag.id))
+      .map((t) => t.id);
+
+    const newTags = wordTagsDto.filter((tag) => !prevTagsIDs.includes(tag.id));
+    await this.assignTagsToWord(word, newTags);
+
+    if (tagsToDeleteIDs.length !== 0) {
+      await this.tagsToWordRepository.delete(tagsToDeleteIDs);
+    }
+  }
+
+  async assignTagsToWord(word: Word, tagsToWordDto: WordTagDto[]) {
+    const toAssign = tagsToWordDto.map((tag) =>
+      this.tagsToWordRepository.create({
+        tag,
+        word,
+      }),
+    );
+
+    toAssign.forEach((t) => console.log(t));
+
+    await this.tagsToWordRepository.save(toAssign);
+  }
+
+  async getTagsToWord(word: Word) {
+    const tagsToWord = await this.tagsToWordRepository
+      .createQueryBuilder('tagsToWord')
+      .leftJoinAndSelect('tagsToWord.word', 'word')
+      .leftJoinAndSelect('tagsToWord.tag', 'tag')
+      .where('tagsToWord.word = :wordID', { wordID: word.id })
+      .getMany();
+
+    return tagsToWord;
+  }
+
+  // WORD TAGS
 
   async getAllWordTagsByUserID(userID: number) {
     const wordTags = await this.wordsTagsRepository
@@ -184,7 +237,48 @@ export class WordsService {
     if (wordTag) {
       await this.wordsTagsRepository.delete(id);
     } else {
-      throw new Error(`WordTag with ID ${id} not fund.`);
+      throw new Error(`WordTag with ID ${id} not found.`);
+    }
+  }
+
+  // DEFINITION TAGS
+
+  async getAllDefinitionTagsByUserID(userID: number) {
+    const definitionTags = await this.definitionTagsRepository
+      .createQueryBuilder('tag')
+      .where('tag.user = :userID', { userID })
+      .getMany();
+
+    return definitionTags;
+  }
+
+  async createDefinitionTag(
+    user: User,
+    definitionTagCreateDto: DefinitionTagCreateDto,
+  ) {
+    const definitionTag = this.definitionTagsRepository.create({
+      ...definitionTagCreateDto,
+      user,
+    });
+
+    return await this.saveDefinitionTagAndExtract(definitionTag);
+  }
+
+  async updateDefinitionTag(defintionTagDto: DefinitionTagDto) {
+    return await this.saveDefinitionTagAndExtract(defintionTagDto);
+  }
+
+  async deleteDefinitionTagByID(id: number) {
+    const defintionTag = await this.definitionTagsRepository.find({
+      where: {
+        id,
+      },
+    });
+
+    if (defintionTag) {
+      await this.definitionTagsRepository.delete(id);
+    } else {
+      throw new Error(`WordTag with ID ${id} not found.`);
     }
   }
 
@@ -196,6 +290,16 @@ export class WordsService {
       tagsToWord,
       ...tag
     } = await this.wordsTagsRepository.save(wordTag);
+
+    return tag;
+  }
+
+  async saveDefinitionTagAndExtract(definitionTagDto: DefinitionTagDto) {
+    const {
+      user: u,
+      tagsToDefinition,
+      ...tag
+    } = await this.definitionTagsRepository.save(definitionTagDto);
 
     return tag;
   }

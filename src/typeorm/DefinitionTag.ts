@@ -1,4 +1,11 @@
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  OneToMany,
+} from 'typeorm';
+import { TagsToDefinition } from './TagsToDefinition';
 import User from './User';
 
 @Entity()
@@ -14,6 +21,9 @@ export default class DefinitionTag {
   })
   description: string;
 
-  // @ManyToOne(() => User, (user) => user.defTags)
-  // user: User;
+  @ManyToOne(() => User, (user) => user.defTags)
+  user: User;
+
+  @OneToMany(() => TagsToDefinition, (tagsToDefinition) => tagsToDefinition.tag)
+  tagsToDefinition: TagsToDefinition[];
 }

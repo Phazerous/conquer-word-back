@@ -7,6 +7,7 @@ import {
   PrimaryGeneratedColumn,
 } from 'typeorm';
 import Example from './Example';
+import { TagsToDefinition } from './TagsToDefinition';
 import Word from './Word';
 
 @Entity()
@@ -35,4 +36,10 @@ export default class Definition {
 
   @OneToMany(() => Example, (example) => example.definition)
   examples: Example[];
+
+  @OneToMany(
+    () => TagsToDefinition,
+    (tagsToDefinition) => tagsToDefinition.definition,
+  )
+  tagsToDefinition: TagsToDefinition[];
 }

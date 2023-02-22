@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import Definition from './typeorm/Definition';
 import DefinitionTag from './typeorm/DefinitionTag';
 import Example from './typeorm/Example';
+import { TagsToDefinition } from './typeorm/TagsToDefinition';
 import { TagsToWord } from './typeorm/TagsToWord';
 import User from './typeorm/User';
 import UserToken from './typeorm/UserToken';
@@ -34,6 +35,7 @@ import { WordsModule } from './words/words.module';
         DefinitionTag,
         Example,
         Definition,
+        TagsToDefinition,
       ],
       synchronize: true,
     }),
