@@ -60,7 +60,7 @@ export class WordsService {
     if (updatedDefinitions.length !== 0)
       await this.updateExamples(definitions, updatedDefinitions);
 
-    return this.getWordByID(wordDto.id);
+    return await this.getFullWord(wordDto.id);
   }
 
   private async updateWordContent(word: Word, wordDto: WordDto) {
@@ -86,7 +86,11 @@ export class WordsService {
         )
       : [];
 
-    await this.definitionsRepository.save(definitionEntities);
+    const updatedDefinitions = await this.definitionsRepository.save(
+      definitionEntities,
+    );
+
+    await this.handleDefinitionsTag(updatedDefinitions, definitionsDto);
 
     const existingDefinitionIDs = definitionEntities
       .map((def) => def?.id)
@@ -95,12 +99,70 @@ export class WordsService {
     const deletedDefinitions = prevDefinitions.filter(
       (prevDef) => !existingDefinitionIDs.includes(prevDef.id),
     );
+    const deletedDefinitionsTagsIDs = deletedDefinitions.flatMap((def) =>
+      def.tagsToDefinition.map((tag) => tag.id),
+    );
     const deletedExamples = deletedDefinitions.flatMap(
       (prevDef) => prevDef.examples,
     );
 
+    if (deletedDefinitionsTagsIDs.length !== 0) {
+      await this.tagsToDefinitionRepository.delete(deletedDefinitionsTagsIDs);
+    }
     await this.examplesRepository.remove(deletedExamples);
     await this.definitionsRepository.remove(deletedDefinitions);
+  }
+
+  async handleDefinitionsTag(
+    definitions: Definition[],
+    definitionsDto: DefinitionDto[],
+  ) {
+    definitions.forEach(async (definition) => {
+      const tagsToDeleteIDs = [];
+      const tagsToUpdate = [];
+
+      const prevTags = (await this.getTagsToDefinition(definition)).map(
+        (tagToDefinition) => tagToDefinition.tag,
+      );
+
+      const tags =
+        definitionsDto.find((def) => def.text === definition.text)?.tags || [];
+      const tagsIDs = tags.map((tag) => tag?.id).filter((t) => t !== undefined);
+
+      tagsToDeleteIDs.push(
+        ...prevTags
+          .filter((tag) => !tagsIDs.includes(tag.id))
+          .map((tag) => tag.id),
+      );
+
+      const preparedTagsToUpdate = tags.map((tag) =>
+        this.prepareDefinitionTagToUpdate(definition, tag),
+      );
+
+      tagsToUpdate.push(...preparedTagsToUpdate);
+
+      if (tagsToDeleteIDs.length !== 0) {
+        await this.tagsToDefinitionRepository.delete(tagsToDeleteIDs);
+      }
+
+      console.log(tagsToUpdate);
+
+      if (tagsToUpdate.length !== 0) {
+        await this.tagsToDefinitionRepository.save(tagsToUpdate);
+      }
+    });
+  }
+
+  private prepareDefinitionTagToUpdate(
+    definition: Definition,
+    definitionTagDto: DefinitionTagDto,
+  ) {
+    const tag = this.tagsToDefinitionRepository.create({
+      ...definitionTagDto,
+      definition,
+    });
+
+    return tag;
   }
 
   private createNewDefinition(
@@ -168,7 +230,7 @@ export class WordsService {
 
     const existingTagsIDs = wordTagsDto.map((tag) => tag.id);
     const tagsToDeleteIDs = prevTagsToWord
-      .filter((prevTag) => !existingTagsIDs.includes(prevTag.id))
+      .filter((prevTag) => !existingTagsIDs.includes(prevTag.tag.id))
       .map((t) => t.id);
 
     const newTags = wordTagsDto.filter((tag) => !prevTagsIDs.includes(tag.id));
@@ -186,8 +248,6 @@ export class WordsService {
         word,
       }),
     );
-
-    toAssign.forEach((t) => console.log(t));
 
     await this.tagsToWordRepository.save(toAssign);
   }
@@ -239,6 +299,19 @@ export class WordsService {
     } else {
       throw new Error(`WordTag with ID ${id} not found.`);
     }
+  }
+
+  async getTagsToDefinition(definition: Definition) {
+    const tagsToDefinition = await this.tagsToDefinitionRepository
+      .createQueryBuilder('tagsToDefinition')
+      .leftJoinAndSelect('tagsToDefinition.definition', 'definition')
+      .leftJoinAndSelect('tagsToDefinition.tag', 'tag')
+      .where('tagsToDefinition.definition = :definitionID', {
+        definitionID: definition.id,
+      })
+      .getMany();
+
+    return tagsToDefinition;
   }
 
   // DEFINITION TAGS
@@ -321,21 +394,47 @@ export class WordsService {
       .where('word.id = :wordID', { wordID })
       .getOne();
 
-    // const tags = await this.tagsToWordRepository
-    //   .createQueryBuilder('tagsToWord')
-    //   .leftJoin('tagsToWord.tag', 'tag')
-    //   .leftJoin('tagsToWord.word', 'word')
-    //   .where('word.id = :wordID', { wordID })
-    //   .select('tag.title', 'title')
-    //   .getRawMany();
-
-    // const tagTitles = tags.map((tag) => tag.title);
-
-    // const preparedWord = {
-    //   ...word,
-    //   tags: tagTitles,
-    // };
-
     return word;
+  }
+
+  async getFullWord(wordID: number) {
+    const word = await this.wordsRepository
+      .createQueryBuilder('word')
+      .leftJoinAndSelect('word.definitions', 'definitions')
+      .leftJoinAndSelect('definitions.examples', 'examples')
+      .where('word.id = :wordID', { wordID })
+      .getOne();
+
+    word.definitions = await this.assignTagsToDefinition(word.definitions);
+
+    const wordTags = await this.getTagsToWord(word);
+
+    return {
+      ...word,
+      tags: wordTags.map((w) => w.tag),
+    };
+  }
+
+  async assignTagsToDefinition(definitions: Definition[]) {
+    const updatedDefs = [];
+
+    const go = async () => {
+      for (let i = 0; i < definitions.length; i++) {
+        const definition = definitions[i];
+
+        const tags = (await this.getTagsToDefinition(definition)).map(
+          (e) => e.tag,
+        );
+
+        updatedDefs.push({
+          ...definition,
+          tags,
+        });
+      }
+    };
+
+    await go();
+
+    return updatedDefs;
   }
 }

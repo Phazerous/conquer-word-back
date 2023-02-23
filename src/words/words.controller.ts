@@ -73,7 +73,7 @@ export class WordsController {
   @Get('definitionTag')
   async getAllDefinitionTags(@Request() req) {
     console.log(req.user);
-    return await this.wordsService.getAllWordTagsByUserID(req.user.id);
+    return await this.wordsService.getAllDefinitionTagsByUserID(req.user.id);
   }
 
   @UseGuards(CookieAuthGuard)
@@ -106,9 +106,9 @@ export class WordsController {
   //   return this.wordsService.createWordTag(req.user, creationWordTag);
   // }
 
-  // @Get(':wordID')
-  // async getWordById(@Param('wordID', ParseIntPipe) wordID: number) {
-  //   const word = this.wordsService.getWordByID(wordID);
-  //   return word;
-  // }
+  @Get(':wordID')
+  async getWordById(@Param('wordID', ParseIntPipe) wordID: number) {
+    const word = this.wordsService.getFullWord(wordID);
+    return word;
+  }
 }
